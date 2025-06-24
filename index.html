@@ -1,73 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>Card Filler (A5/A6/A7) from SVG</title>
   <style>
-body {
-  font-family: sans-serif;
-  padding: 2rem;
-  background: #faf8f5;
-  min-height: 100vh;
-  display: flex;          /* <-- new */
-  flex-direction: column; /* <-- new */
-  align-items: center;    /* <-- new: centers horizontally */
-  justify-content: flex-start; /* <-- new: aligns top, can use center if you want vertical center */
-}
-h2 { text-align: center; }      /* <-- new: centers the heading */
-
-.controls {
-  margin-bottom: 1em;
-  display: flex;
-  gap: 1.5em;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;      /* <-- new: centers controls horizontally */
-  width: 100%;
-  max-width: 900px;             /* <-- optional: keeps controls from being too wide */
-}
-
-label { display: block; font-weight: bold; margin-bottom: 0.2em; }
-textarea { width: 30em; height: 8em; }
-
-.preview-area {
-  display: flex;
-  gap: 2em;
-  flex-wrap: wrap;
-  justify-content: center;      /* <-- new: centers cards horizontally */
-  width: 100%;
-}
-
-.svgpage {
-  border: 1px solid #bbb;
-  background: #fff;
-  margin-bottom: 1em;
-  box-shadow: 0 2px 8px #0001;
-  display: flex;                /* <-- optional: centers each SVG inside its box */
-  justify-content: center;      /* <-- optional */
-}
-</style>
+    body { font-family: sans-serif; padding: 2rem; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: #faf8f5; }
+    h2 { text-align: center; }
+    .controls { margin-bottom: 1em; display: flex; gap: 1.5em; flex-wrap: wrap; align-items: flex-end; justify-content: center; width: 100%; max-width: 1100px; }
+    .margin-controls { display: flex; gap: 0.5em; flex-wrap: wrap; align-items: flex-end; }
+    label { display: block; font-weight: bold; margin-bottom: 0.2em; }
+    textarea { width: 30em; height: 8em; }
+    .preview-area { display: flex; gap: 2em; flex-wrap: wrap; justify-content: center; width: 100%; }
+    .svgpage { border: 1px solid #bbb; background: #fff; margin-bottom: 1em; box-shadow: 0 2px 8px #0001; display: flex; justify-content: center; }
+    .margin-controls label { font-weight: normal; }
+  </style>
 </head>
-
 <body>
   <h2>Card Filler (A5/A6/A7)</h2>
   <div class="controls">
     <div>
       <label for="textinput">Text to fill:</label>
-      <textarea id="textinput"></textarea>
+      <textarea id="textinput" placeholder="Type text here. Use line breaks for new lines. Use **bold**, *italic* etc."></textarea>
     </div>
     <div>
       <label for="cardsize">Card Size:</label>
       <select id="cardsize">
-        <option value="a5">A5 (2 per page)</option>
-        <option value="a6">A6 (4 per page)</option>
-        <option value="a7">A7 (8 per page)</option>
+        <option value="a5">A5 (2 per page, vertical)</option>
+        <option value="a6">A6 (4 per page, horizontal)</option>
+        <option value="a7">A7 (8 per page, vertical)</option>
       </select>
     </div>
     <div>
       <label for="fontsize">Text Size (px):</label>
       <input type="number" id="fontsize" min="8" max="60" value="18">
+    </div>
+    <div class="margin-controls">
+      <label>Margins:</label>
+      <label>Top <input type="number" id="margintop" min="0" max="100" value="32" style="width:3em;"></label>
+      <label>Right <input type="number" id="marginright" min="0" max="100" value="32" style="width:3em;"></label>
+      <label>Bottom <input type="number" id="marginbottom" min="0" max="100" value="32" style="width:3em;"></label>
+      <label>Left <input type="number" id="marginleft" min="0" max="100" value="32" style="width:3em;"></label>
     </div>
   </div>
   <div class="preview-area" id="preview"></div>
@@ -75,17 +47,18 @@ textarea { width: 30em; height: 8em; }
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvg@3.0.10/lib/umd.min.js"></script>
   <script>
-    // Rectangles by card size
+    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
+
     const RECT_DATA = {
       a5: [
         { x: 0.5, y: 0.74, width: 595.28, height: 419.53 },
-        { x: 0.5, y: 422.26, width: 595.28, height: 419.53 },
+        { x: 0.5, y: 422.26, width: 595.28, height: 419.53 }
       ],
       a6: [
-        { x: 0.5, y: 0.5, width: 297.64, height: 419.53 },
-        { x: 298.14, y: 0.5, width: 297.64, height: 419.53 },
-        { x: 0.5, y: 422.86, width: 297.64, height: 419.53 },
-        { x: 298.14, y: 422.86, width: 297.64, height: 419.53 },
+        { x: 0.5, y: 0.5, width: 419.53, height: 297.64 },
+        { x: 422.26, y: 0.5, width: 419.53, height: 297.64 },
+        { x: 0.5, y: 298.14, width: 419.53, height: 297.64 },
+        { x: 422.26, y: 298.14, width: 419.53, height: 297.64 }
       ],
       a7: [
         { x: 0, y: 0, width: 297.64, height: 209.76 },
@@ -95,57 +68,111 @@ textarea { width: 30em; height: 8em; }
         { x: 0, y: 420.52, width: 297.64, height: 209.76 },
         { x: 300.64, y: 420.52, width: 297.64, height: 209.76 },
         { x: 0, y: 630.28, width: 297.64, height: 209.76 },
-        { x: 300.64, y: 630.28, width: 297.64, height: 209.76 },
+        { x: 300.64, y: 630.28, width: 297.64, height: 209.76 }
       ],
     };
-    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89; // SVG A4 in pt (72dpi)
 
-    // SVG text wrap (line-breaking)
-    function wrapTextToSvg(text, x, y, width, fontsize, lineHeight = 1.18) {
-      let words = text.split(/\s+/);
-      let lines = [];
-      let ctx = document.createElement('canvas').getContext('2d');
-      ctx.font = `${fontsize}px sans-serif`;
-      let line = '';
-      for (let w of words) {
-        let testLine = line ? line + ' ' + w : w;
-        let metrics = ctx.measureText(testLine);
-        if (metrics.width > width && line) {
-          lines.push(line);
-          line = w;
+    function parseRichLine(line) {
+      line = line.replace(/\*\*([^\*]+)\*\*/g, (_, m) => `<tspan font-weight="bold">${m}</tspan>`);
+      line = line.replace(/\*([^\*]+)\*/g, (_, m) => `<tspan font-style="italic">${m}</tspan>`);
+      line = line.replace(/__([^_]+)__/g, (_, m) => `<tspan text-decoration="underline">${m}</tspan>`);
+      line = line.replace(/`([^`]+)`/g, (_, m) => `<tspan font-family='monospace' fill="#d14">${m}</tspan>`);
+      return line;
+    }
+
+    function wrapTextLinesPreserveBreaks(text, ctx, width) {
+      let inputLines = text.replace(/\r\n/g, "\n").split("\n");
+      let visualLines = [];
+      for (let i = 0; i < inputLines.length; i++) {
+        let line = inputLines[i];
+        if (line === "") {
+          visualLines.push(""); // preserve blank
         } else {
-          line = testLine;
+          let words = line.split(/\s+/);
+          let current = "";
+          for (let j = 0; j < words.length; j++) {
+            let word = words[j];
+            let test = current ? current + " " + word : word;
+            if (ctx.measureText(test.replace(/\*\*|\*/g, "")).width > width && current) {
+              visualLines.push(current);
+              current = word;
+            } else {
+              current = test;
+            }
+          }
+          if (current !== "") visualLines.push(current);
         }
       }
-      if (line) lines.push(line);
+      return visualLines;
+    }
+
+function splitTextIntoCards(text, cardRects, fontsize, lineHeight, margins) {
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${fontsize}px sans-serif`;
+  const usableWidth = cardRects[0].width - margins.left - margins.right;
+  let visualLines = wrapTextLinesPreserveBreaks(text, ctx, usableWidth);
+
+  let pointer = 0;
+  let chunks = [];
+  for (let rect of cardRects) {
+    let maxLines = Math.floor((rect.height - margins.top - margins.bottom) / (fontsize * lineHeight));
+    let cardLines = [];
+    while (pointer < visualLines.length && cardLines.length < maxLines) {
+      cardLines.push(visualLines[pointer++]);
+    }
+    // *** Remove leading blank lines from this card ***
+    while (cardLines.length > 0 && cardLines[0] === '') {
+      cardLines.shift();
+    }
+    chunks.push(cardLines.join("\n"));
+  }
+  let restWords = visualLines.slice(pointer).join("\n");
+  return { chunks, restWords };
+}
+
+    // --- CRUCIAL: This version creates a true blank line for every blank in the input ---
+    function wrapAndJustifyTextToSvg(text, x, y, width, fontsize, lineHeight) {
+      let rawLines = text.split('\n');
       let svg = `<text x="${x}" y="${y}" font-size="${fontsize}" font-family="sans-serif" fill="#111">`;
-      for (let i = 0; i < lines.length; ++i) {
-        svg += `<tspan x="${x}" dy="${i === 0 ? 0 : fontsize * lineHeight}">${lines[i]}</tspan>`;
+      for (let i = 0; i < rawLines.length; ++i) {
+        let line = rawLines[i];
+        let dy = (i === 0 ? 0 : fontsize * lineHeight);
+        // SKIP blank at start of card
+        if (i === 0 && line === '') continue;
+        let tspans = parseRichLine(line);
+        if (line === '') {
+          svg += `<tspan x="${x}" dy="${dy}">\u200B</tspan>`;
+        } else if (i < rawLines.length - 1 && rawLines[i + 1] !== '') {
+          svg += `<tspan x="${x}" dy="${dy}" textLength="${width}" lengthAdjust="spacingAndGlyphs">${tspans}</tspan>`;
+        } else {
+          svg += `<tspan x="${x}" dy="${dy}">${tspans}</tspan>`;
+        }
       }
       svg += `</text>`;
       return svg;
     }
 
-    // Returns an SVG string for a page filled with cards and text
-    function makeSVGPage(cardRects, textChunks, startNum, fontsize) {
-      let svg = `<svg width="${A4_WIDTH}" height="${A4_HEIGHT}" viewBox="0 0 ${A4_WIDTH} ${A4_HEIGHT}" xmlns="http://www.w3.org/2000/svg">`;
+    function makeSVGPage(cardRects, textChunks, startNum, fontsize, cardsize, margins) {
+      let width = (cardsize === "a6") ? A4_HEIGHT : A4_WIDTH;
+      let height = (cardsize === "a6") ? A4_WIDTH : A4_HEIGHT;
+      const circleOffsetX = 30;
+      const circleOffsetY = 30;
+      let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
       svg += `<rect width="100%" height="100%" fill="#fff"/>`;
       for (let i = 0; i < cardRects.length; ++i) {
-        let { x, y, width, height } = cardRects[i];
-        svg += `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
-        // Card number circle (top right)
+        let { x, y, width: w, height: h } = cardRects[i];
+        svg += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
         let num = startNum + i + 1;
-        let circleX = x + width - 20;
-        let circleY = y + 20;
+        let circleX = x + w - circleOffsetX;
+        let circleY = y + circleOffsetY;
         svg += `<circle cx="${circleX}" cy="${circleY}" r="9" fill="#eee" stroke="#222" stroke-width="1"/>`;
         svg += `<text x="${circleX}" y="${circleY + 5}" text-anchor="middle" font-size="15" fill="#222" font-family="sans-serif" font-weight="bold">${num}</text>`;
-        // Text content
         if (textChunks[i]) {
-          svg += wrapTextToSvg(
+          svg += wrapAndJustifyTextToSvg(
             textChunks[i],
-            x + 16,
-            y + 40,
-            width - 32,
+            x + margins.left,
+            y + margins.top,
+            w - margins.left - margins.right,
             fontsize,
             1.18
           );
@@ -155,104 +182,75 @@ textarea { width: 30em; height: 8em; }
       return svg;
     }
 
-    // Smarter split: respects max lines per card and wraps text correctly
-function splitTextIntoCards(text, cardRects, fontsize, lineHeight = 1.18, breakLinesEarly = 1) {
-  const ctx = document.createElement('canvas').getContext('2d');
-  ctx.font = `${fontsize}px sans-serif`;
-  let words = text.split(/\s+/).filter(w => w.length > 0);
-  let idx = 0;
-  let chunks = [];
-  for (let rect of cardRects) {
-    const { width, height } = rect;
-    // Instead of subtracting 60, just subtract a smaller margin
-    let contentTop = 5; // Matches y+40 in your SVG
-    let contentBottom = 16; // Small buffer at the bottom
-    let availableHeight = height - contentTop - contentBottom;
-    let maxLines = Math.floor(availableHeight / (fontsize * lineHeight)) - breakLinesEarly;
-    if (maxLines < 1) maxLines = 1;
-    let lines = [];
-    let line = '';
-    let lineCount = 0;
-    while (idx < words.length && lineCount < maxLines) {
-      let testLine = line ? line + ' ' + words[idx] : words[idx];
-      let metrics = ctx.measureText(testLine);
-      if (metrics.width > (width - 32) && line) {
-        lines.push(line);
-        line = words[idx];
-        lineCount++;
-      } else {
-        line = testLine;
-        idx++;
-      }
+    function getMargins() {
+      return {
+        top: parseInt(document.getElementById('margintop').value, 10) || 0,
+        right: parseInt(document.getElementById('marginright').value, 10) || 0,
+        bottom: parseInt(document.getElementById('marginbottom').value, 10) || 0,
+        left: parseInt(document.getElementById('marginleft').value, 10) || 0,
+      };
     }
-    if (line && lineCount < maxLines) {
-      lines.push(line);
-    }
-    chunks.push(lines.join(' '));
-  }
-  let restWords = words.slice(idx).join(' ');
-  return { chunks, restWords };
-}
 
     function updatePreview() {
       let text = document.getElementById('textinput').value;
       let cardsize = document.getElementById('cardsize').value;
       let fontsize = parseInt(document.getElementById('fontsize').value, 10);
+      let margins = getMargins();
       const cardRects = RECT_DATA[cardsize];
-      let allChunks = [];
       let restText = text;
       let pageNum = 0, num = 0;
       document.getElementById('preview').innerHTML = "";
-      while (restText.trim().length > 0 && pageNum < 16) { // max 16 pages!
-        let { chunks, restWords } = splitTextIntoCards(restText, cardRects, fontsize, 1.18, 1); // 1: break one line early
-        allChunks.push(chunks);
-        // Draw the SVG for this page
-        let svg = makeSVGPage(cardRects, chunks, num, fontsize);
+      while (restText.length > 0 && pageNum < 16) {
+        let { chunks, restWords } = splitTextIntoCards(restText, cardRects, fontsize, 1.18, margins);
+        let svg = makeSVGPage(cardRects, chunks, num, fontsize, cardsize, margins);
         let div = document.createElement('div');
         div.className = "svgpage";
         div.innerHTML = svg;
         document.getElementById('preview').appendChild(div);
+        // Only stop if there is truly no more nonempty content to display
+        if (restWords.replace(/[\n\r\s]/g, '') === "") break;
         restText = restWords;
         num += cardRects.length;
         pageNum++;
-        if (restWords.trim().length === 0) break;
       }
     }
 
     document.getElementById('textinput').addEventListener('input', updatePreview);
     document.getElementById('cardsize').addEventListener('change', updatePreview);
     document.getElementById('fontsize').addEventListener('input', updatePreview);
+    document.getElementById('margintop').addEventListener('input', updatePreview);
+    document.getElementById('marginright').addEventListener('input', updatePreview);
+    document.getElementById('marginbottom').addEventListener('input', updatePreview);
+    document.getElementById('marginleft').addEventListener('input', updatePreview);
     window.addEventListener('DOMContentLoaded', updatePreview);
 
-    // PDF Export (with high-res rendering)
     document.getElementById('exportpdf').addEventListener('click', async function () {
+      let cardsize = document.getElementById('cardsize').value;
       let svgs = Array.from(document.querySelectorAll('.svgpage svg'));
       if (svgs.length === 0) return;
       const { jsPDF } = window.jspdf;
-      let pdf = new jsPDF({ unit: "pt", format: [A4_WIDTH, A4_HEIGHT] });
-
-      const scale = 4; // Try 3 or 4 for high-res
-
+      let pdf = (cardsize === "a6")
+        ? new jsPDF({ unit: "pt", format: [A4_HEIGHT, A4_WIDTH] })
+        : new jsPDF({ unit: "pt", format: [A4_WIDTH, A4_HEIGHT] });
+      const scale = 4;
       for (let i = 0; i < svgs.length; ++i) {
         let svgEl = svgs[i];
+        let width = (cardsize === "a6") ? A4_HEIGHT : A4_WIDTH;
+        let height = (cardsize === "a6") ? A4_WIDTH : A4_HEIGHT;
         let xml = new XMLSerializer().serializeToString(svgEl);
-
-        // Modify SVG string for higher resolution
         let scaledXml = xml
-          .replace(`width="${A4_WIDTH}"`, `width="${A4_WIDTH * scale}"`)
-          .replace(`height="${A4_HEIGHT}"`, `height="${A4_HEIGHT * scale}"`)
-          .replace(`viewBox="0 0 ${A4_WIDTH} ${A4_HEIGHT}"`, `viewBox="0 0 ${A4_WIDTH} ${A4_HEIGHT}"`);
-
+          .replace(`width="${width}"`, `width="${width * scale}"`)
+          .replace(`height="${height}"`, `height="${height * scale}"`)
+          .replace(`viewBox="0 0 ${width} ${height}"`, `viewBox="0 0 ${width} ${height}"`);
         let canvas = document.createElement('canvas');
-        canvas.width = A4_WIDTH * scale;
-        canvas.height = A4_HEIGHT * scale;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
         let ctx = canvas.getContext('2d');
-
         let v = window.canvg.Canvg.fromString(ctx, scaledXml);
         await v.render();
         let imgData = canvas.toDataURL('image/png');
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, 0, A4_WIDTH, A4_HEIGHT);
+        pdf.addImage(imgData, "PNG", 0, 0, width, height);
       }
       pdf.save("cards.pdf");
     });
