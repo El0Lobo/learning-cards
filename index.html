@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Card Filler (A5/A6/A7) from SVG</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #faf8f5; }
+    .controls { margin-bottom: 1em; display: flex; gap: 1.5em; flex-wrap: wrap; align-items: flex-end; }
+    label { display: block; font-weight: bold; margin-bottom: 0.2em; }
+    textarea { width: 30em; height: 8em; }
+    .preview-area { display: flex; gap: 2em; flex-wrap: wrap; }
+    .svgpage { border: 1px solid #bbb; background: #fff; margin-bottom: 1em; box-shadow: 0 2px 8px #0001; }
+  </style>
+</head>
+
+<body>
+  <h2>Card Filler (A5/A6/A7)</h2>
+  <div class="controls">
+    <div>
+      <label for="textinput">Text to fill:</label>
+      <textarea id="textinput"></textarea>
+    </div>
+    <div>
+      <label for="cardsize">Card Size:</label>
+      <select id="cardsize">
+        <option value="a5">A5 (2 per page)</option>
+        <option value="a6">A6 (4 per page)</option>
+        <option value="a7">A7 (8 per page)</option>
+      </select>
+    </div>
+    <div>
+      <label for="fontsize">Text Size (px):</label>
+      <input type="number" id="fontsize" min="8" max="60" value="18">
+    </div>
+  </div>
+  <div class="preview-area" id="preview"></div>
+  <button id="exportpdf">Export to PDF</button>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvg@3.0.10/lib/umd.min.js"></script>
+  <script>
+    // Rectangles by card size
+    const RECT_DATA = {
+      a5: [
+        { x: 0.5, y: 0.74, width: 595.28, height: 419.53 },
+        { x: 0.5, y: 422.26, width: 595.28, height: 419.53 },
+      ],
+      a6: [
+        { x: 0.5, y: 0.5, width: 297.64, height: 419.53 },
+        { x: 298.14, y: 0.5, width: 297.64, height: 419.53 },
+        { x: 0.5, y: 422.86, width: 297.64, height: 419.53 },
+        { x: 298.14, y: 422.86, width: 297.64, height: 419.53 },
+      ],
+      a7: [
+        { x: 0, y: 0, width: 297.64, height: 209.76 },
+        { x: 300.64, y: 0, width: 297.64, height: 209.76 },
+        { x: 0, y: 210.76, width: 297.64, height: 209.76 },
+        { x: 300.64, y: 210.76, width: 297.64, height: 209.76 },
+        { x: 0, y: 420.52, width: 297.64, height: 209.76 },
+        { x: 300.64, y: 420.52, width: 297.64, height: 209.76 },
+        { x: 0, y: 630.28, width: 297.64, height: 209.76 },
+        { x: 300.64, y: 630.28, width: 297.64, height: 209.76 },
+      ],
+    };
+    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89; // SVG A4 in pt (72dpi)
+
+    // SVG text wrap (line-breaking)
+    function wrapTextToSvg(text, x, y, width, fontsize, lineHeight = 1.18) {
+      let words = text.split(/\s+/);
+      let lines = [];
+      let ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = `${fontsize}px sans-serif`;
+      let line = '';
+      for (let w of words) {
+        let testLine = line ? line + ' ' + w : w;
+        let metrics = ctx.measureText(testLine);
+        if (metrics.width > width && line) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) lines.push(line);
+      let svg = `<text x="${x}" y="${y}" font-size="${fontsize}" font-family="sans-serif" fill="#111">`;
+      for (let i = 0; i < lines.length; ++i) {
+        svg += `<tspan x="${x}" dy="${i === 0 ? 0 : fontsize * lineHeight}">${lines[i]}</tspan>`;
+      }
+      svg += `</text>`;
+      return svg;
+    }
+
+    // Returns an SVG string for a page filled with cards and text
+    function makeSVGPage(cardRects, textChunks, startNum, fontsize) {
+      let svg = `<svg width="${A4_WIDTH}" height="${A4_HEIGHT}" viewBox="0 0 ${A4_WIDTH} ${A4_HEIGHT}" xmlns="http://www.w3.org/2000/svg">`;
+      svg += `<rect width="100%" height="100%" fill="#fff"/>`;
+      for (let i = 0; i < cardRects.length; ++i) {
+        let { x, y, width, height } = cardRects[i];
+        svg += `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="12" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
+        // Card number circle (top right)
+        let num = startNum + i + 1;
+        let circleX = x + width - 20;
+        let circleY = y + 20;
+        svg += `<circle cx="${circleX}" cy="${circleY}" r="14" fill="#eee" stroke="#222" stroke-width="1"/>`;
+        svg += `<text x="${circleX}" y="${circleY + 5}" text-anchor="middle" font-size="15" fill="#222" font-family="sans-serif" font-weight="bold">${num}</text>`;
+        // Text content
+        if (textChunks[i]) {
+          svg += wrapTextToSvg(
+            textChunks[i],
+            x + 16,
+            y + 40,
+            width - 32,
+            fontsize,
+            1.18
+          );
+        }
+      }
+      svg += `</svg>`;
+      return svg;
+    }
+
+    // Smarter split: respects max lines per card and wraps text correctly
+function splitTextIntoCards(text, cardRects, fontsize, lineHeight = 1.18, breakLinesEarly = 1) {
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${fontsize}px sans-serif`;
+  let words = text.split(/\s+/).filter(w => w.length > 0);
+  let idx = 0;
+  let chunks = [];
+  for (let rect of cardRects) {
+    const { width, height } = rect;
+    // Instead of subtracting 60, just subtract a smaller margin
+    let contentTop = 5; // Matches y+40 in your SVG
+    let contentBottom = 16; // Small buffer at the bottom
+    let availableHeight = height - contentTop - contentBottom;
+    let maxLines = Math.floor(availableHeight / (fontsize * lineHeight)) - breakLinesEarly;
+    if (maxLines < 1) maxLines = 1;
+    let lines = [];
+    let line = '';
+    let lineCount = 0;
+    while (idx < words.length && lineCount < maxLines) {
+      let testLine = line ? line + ' ' + words[idx] : words[idx];
+      let metrics = ctx.measureText(testLine);
+      if (metrics.width > (width - 32) && line) {
+        lines.push(line);
+        line = words[idx];
+        lineCount++;
+      } else {
+        line = testLine;
+        idx++;
+      }
+    }
+    if (line && lineCount < maxLines) {
+      lines.push(line);
+    }
+    chunks.push(lines.join(' '));
+  }
+  let restWords = words.slice(idx).join(' ');
+  return { chunks, restWords };
+}
+
+    function updatePreview() {
+      let text = document.getElementById('textinput').value;
+      let cardsize = document.getElementById('cardsize').value;
+      let fontsize = parseInt(document.getElementById('fontsize').value, 10);
+      const cardRects = RECT_DATA[cardsize];
+      let allChunks = [];
+      let restText = text;
+      let pageNum = 0, num = 0;
+      document.getElementById('preview').innerHTML = "";
+      while (restText.trim().length > 0 && pageNum < 16) { // max 16 pages!
+        let { chunks, restWords } = splitTextIntoCards(restText, cardRects, fontsize, 1.18, 1); // 1: break one line early
+        allChunks.push(chunks);
+        // Draw the SVG for this page
+        let svg = makeSVGPage(cardRects, chunks, num, fontsize);
+        let div = document.createElement('div');
+        div.className = "svgpage";
+        div.innerHTML = svg;
+        document.getElementById('preview').appendChild(div);
+        restText = restWords;
+        num += cardRects.length;
+        pageNum++;
+        if (restWords.trim().length === 0) break;
+      }
+    }
+
+    document.getElementById('textinput').addEventListener('input', updatePreview);
+    document.getElementById('cardsize').addEventListener('change', updatePreview);
+    document.getElementById('fontsize').addEventListener('input', updatePreview);
+    window.addEventListener('DOMContentLoaded', updatePreview);
+
+    // PDF Export (with high-res rendering)
+    document.getElementById('exportpdf').addEventListener('click', async function () {
+      let svgs = Array.from(document.querySelectorAll('.svgpage svg'));
+      if (svgs.length === 0) return;
+      const { jsPDF } = window.jspdf;
+      let pdf = new jsPDF({ unit: "pt", format: [A4_WIDTH, A4_HEIGHT] });
+
+      const scale = 4; // Try 3 or 4 for high-res
+
+      for (let i = 0; i < svgs.length; ++i) {
+        let svgEl = svgs[i];
+        let xml = new XMLSerializer().serializeToString(svgEl);
+
+        // Modify SVG string for higher resolution
+        let scaledXml = xml
+          .replace(`width="${A4_WIDTH}"`, `width="${A4_WIDTH * scale}"`)
+          .replace(`height="${A4_HEIGHT}"`, `height="${A4_HEIGHT * scale}"`)
+          .replace(`viewBox="0 0 ${A4_WIDTH} ${A4_HEIGHT}"`, `viewBox="0 0 ${A4_WIDTH} ${A4_HEIGHT}"`);
+
+        let canvas = document.createElement('canvas');
+        canvas.width = A4_WIDTH * scale;
+        canvas.height = A4_HEIGHT * scale;
+        let ctx = canvas.getContext('2d');
+
+        let v = window.canvg.Canvg.fromString(ctx, scaledXml);
+        await v.render();
+        let imgData = canvas.toDataURL('image/png');
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, 0, A4_WIDTH, A4_HEIGHT);
+      }
+      pdf.save("cards.pdf");
+    });
+  </script>
+</body>
+</html>
