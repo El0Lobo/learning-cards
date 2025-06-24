@@ -41,6 +41,12 @@
       <label>Bottom <input type="number" id="marginbottom" min="0" max="100" value="32" style="width:3em;"></label>
       <label>Left <input type="number" id="marginleft" min="0" max="100" value="32" style="width:3em;"></label>
     </div>
+    <div class="circle-controls">
+      <label>Number Offset:</label>
+      <label>X <input type="number" id="circleoffsetx" min="0" max="100" value="20" style="width:3em;"></label>
+      <label>Y <input type="number" id="circleoffsety" min="0" max="100" value="20" style="width:3em;"></label>
+    </div>
+
   </div>
   <div class="preview-area" id="preview"></div>
   <button id="exportpdf">Export to PDF</button>
@@ -79,6 +85,12 @@
       line = line.replace(/`([^`]+)`/g, (_, m) => `<tspan font-family='monospace' fill="#d14">${m}</tspan>`);
       return line;
     }
+function getCircleOffsets() {
+  return {
+    x: parseInt(document.getElementById('circleoffsetx').value, 10) || 0,
+    y: parseInt(document.getElementById('circleoffsety').value, 10) || 0,
+  };
+}
 
     function wrapTextLinesPreserveBreaks(text, ctx, width) {
       let inputLines = text.replace(/\r\n/g, "\n").split("\n");
@@ -155,8 +167,7 @@ function splitTextIntoCards(text, cardRects, fontsize, lineHeight, margins) {
     function makeSVGPage(cardRects, textChunks, startNum, fontsize, cardsize, margins) {
       let width = (cardsize === "a6") ? A4_HEIGHT : A4_WIDTH;
       let height = (cardsize === "a6") ? A4_WIDTH : A4_HEIGHT;
-      const circleOffsetX = 50;
-      const circleOffsetY = 50;
+      const { x: circleOffsetX, y: circleOffsetY } = getCircleOffsets();
       let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
       svg += `<rect width="100%" height="100%" fill="#fff"/>`;
       for (let i = 0; i < cardRects.length; ++i) {
@@ -223,6 +234,8 @@ function splitTextIntoCards(text, cardRects, fontsize, lineHeight, margins) {
     document.getElementById('marginbottom').addEventListener('input', updatePreview);
     document.getElementById('marginleft').addEventListener('input', updatePreview);
     window.addEventListener('DOMContentLoaded', updatePreview);
+document.getElementById('circleoffsetx').addEventListener('input', updatePreview);
+document.getElementById('circleoffsety').addEventListener('input', updatePreview);
 
     document.getElementById('exportpdf').addEventListener('click', async function () {
       let cardsize = document.getElementById('cardsize').value;
