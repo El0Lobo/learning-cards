@@ -155,8 +155,8 @@ function splitTextIntoCards(text, cardRects, fontsize, lineHeight, margins) {
     function makeSVGPage(cardRects, textChunks, startNum, fontsize, cardsize, margins) {
       let width = (cardsize === "a6") ? A4_HEIGHT : A4_WIDTH;
       let height = (cardsize === "a6") ? A4_WIDTH : A4_HEIGHT;
-      const circleOffsetX = 40;
-      const circleOffsetY = 40;
+      const circleOffsetX = 50;
+      const circleOffsetY = 50;
       let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
       svg += `<rect width="100%" height="100%" fill="#fff"/>`;
       for (let i = 0; i < cardRects.length; ++i) {
