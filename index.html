@@ -5,13 +5,49 @@
   <meta charset="UTF-8">
   <title>Card Filler (A5/A6/A7) from SVG</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; background: #faf8f5; }
-    .controls { margin-bottom: 1em; display: flex; gap: 1.5em; flex-wrap: wrap; align-items: flex-end; }
-    label { display: block; font-weight: bold; margin-bottom: 0.2em; }
-    textarea { width: 30em; height: 8em; }
-    .preview-area { display: flex; gap: 2em; flex-wrap: wrap; }
-    .svgpage { border: 1px solid #bbb; background: #fff; margin-bottom: 1em; box-shadow: 0 2px 8px #0001; }
-  </style>
+body {
+  font-family: sans-serif;
+  padding: 2rem;
+  background: #faf8f5;
+  min-height: 100vh;
+  display: flex;          /* <-- new */
+  flex-direction: column; /* <-- new */
+  align-items: center;    /* <-- new: centers horizontally */
+  justify-content: flex-start; /* <-- new: aligns top, can use center if you want vertical center */
+}
+h2 { text-align: center; }      /* <-- new: centers the heading */
+
+.controls {
+  margin-bottom: 1em;
+  display: flex;
+  gap: 1.5em;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;      /* <-- new: centers controls horizontally */
+  width: 100%;
+  max-width: 900px;             /* <-- optional: keeps controls from being too wide */
+}
+
+label { display: block; font-weight: bold; margin-bottom: 0.2em; }
+textarea { width: 30em; height: 8em; }
+
+.preview-area {
+  display: flex;
+  gap: 2em;
+  flex-wrap: wrap;
+  justify-content: center;      /* <-- new: centers cards horizontally */
+  width: 100%;
+}
+
+.svgpage {
+  border: 1px solid #bbb;
+  background: #fff;
+  margin-bottom: 1em;
+  box-shadow: 0 2px 8px #0001;
+  display: flex;                /* <-- optional: centers each SVG inside its box */
+  justify-content: center;      /* <-- optional */
+}
+</style>
 </head>
 
 <body>
